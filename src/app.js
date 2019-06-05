@@ -1,49 +1,60 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow
- */
+import React, { Component } from "react";
+import "react-native-gesture-handler";
+import { Provider } from "react-redux";
+import { createStore } from "redux";
+import CustomError from "./components/CustomError";
+import CustomLoader from "./components/CustomLoader";
+import AppContainer from "./navigation/Navigator";
+import { setAlbums, setBands } from "./redux/actions";
+import rootReducer from "./redux/reducers";
+import { getAlbums, getBands } from "./services/GeneralServices";
 
-import React, {Component} from 'react';
-import {Platform, StyleSheet, Text, View} from 'react-native';
+function configureStore() {
+  const store = createStore(rootReducer);
 
-const instructions = Platform.select({
-  ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
-  android:
-    'Double tap R on your keyboard to reload,\n' +
-    'Shake or press menu button for dev menu',
-});
-
-type Props = {};
-export default class App extends Component<Props> {
-  render() {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.welcome}>Welcome to React Native!</Text>
-        <Text style={styles.instructions}>To get started, edit App.js</Text>
-        <Text style={styles.instructions}>{instructions}</Text>
-      </View>
-    );
-  }
+  return store;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5FCFF',
-  },
-  welcome: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 10,
-  },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
-  },
-});
+const mainStore = configureStore();
+
+export default class app extends Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      loading: true,
+      error: null
+    };
+  }
+
+  async componentDidMount() {
+    try {
+      const bands = await getBands();
+      const albums = await getAlbums();
+      mainStore.dispatch(setBands(bands));
+      mainStore.dispatch(setAlbums(albums));
+      this.setState({
+        loading: false
+      });
+    } catch (error) {
+      this.setState({
+        error,
+        loading: false
+      });
+    }
+  }
+
+  render() {
+    if (this.state.loading) {
+      return <CustomLoader />;
+    } else if (!!this.state.error) {
+      return <CustomError message={this.state.error.message} />;
+    } else {
+      return (
+        <Provider store={mainStore}>
+          <AppContainer />
+        </Provider>
+      );
+    }
+  }
+}
